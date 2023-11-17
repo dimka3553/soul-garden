@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- set title -->
+  <title>The Garden of Souls</title>
+  <!-- set description -->
+  <meta name="description" content="Innovera's placeholder website." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg: #f4f6f9;
+      --bg-overlay: #ffffff00;
+      --text-color: #2c2f41;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #000000;
+        --bg-overlay: #00000000;
+        --text-color: #ffffff;
+      }
+    }
+
+    html {
+      overflow: hidden;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: "Manrope", sans-serif;
+      font-weight: 600;
+    }
+
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: var(--app-height);
+      background-color: var(--bg);
+      overflow: hidden;
+    }
+
+    canvas {
+      display: absolute;
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      z-index: 0;
+    }
+
+    .overlay {
+      position: fixed;
+      top: 0px;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: var(--bg-overlay);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1;
+    }
+
+    .text {
+      font-size: 50px;
+      color: #000000;
+      z-index: 2;
+      position: absolute;
+      color: var(--text-color);
+    }
+
+    .footer {
+      position: absolute;
+      bottom: 0;
+      width: 100vw;
+      padding: 10px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: #000000;
+      z-index: 2;
+      color: var(--text-color);
+      font-size: 12px;
+      font-weight: 400;
+    }
+  </style>
+</head>
+
+<body>
+  <canvas id="shapeCanvas" width="1920" height="1080"></canvas>
+  <div class="container">
+    <div class="overlay">
+      <h1 class="text">The Garden of Souls</h1>
+    </div>
+  </div>
+
+  </div>
+
+  <script>
+    const appHeight = () => {
+      const doc = document.documentElement;
+      doc.style.setProperty("--app-height", `${window.innerHeight}px`);
+    };
+    window.addEventListener("resize", appHeight);
+    appHeight();
+    const canvas = document.getElementById("shapeCanvas");
+    const ctx = canvas.getContext("2d");
+
+    const minVertices = 15;
+    const maxVertices = 20;
+    const morphSpeed = 5;
+
+    let mouseX = 0;
+    let mouseY = 0;
+
+    const gradients = [
+      ["#A0CCFF", "#0075FF"],
+      // ["#330099", "#5500FF"],
+      ["#330099", "#5500FF"],
+      // ["#330099", "#5500FF"],
+      ["#6699CC", "#EB00FF"],
+      // ["#6699CC", "#EB00FF"],
+      // ["#FAFF00", "#FAFF00"],
+      ["#FAFF00", "#FAFF00"],
+      // ["#FAFF00", "#FAFF00"],
+      // ["#FF0000", "#FF0000"],
+      // ["#DB00FF", "#F097FF"]
+    ];
+
+    class Shape {
+      constructor(gradient, offsetX, offsetY) {
+        this.offsetX = offsetX;
+        this.offsetY = offsetY;
+        this.vertices = this.generateRandomVertices();
+        this.gradient = gradient;
+      }
+
+      generateRandomVertices() {
+        const count = Math.floor(Math.random() * (maxVertices - minVertices + 1)) + minVertices;
+        const verts = [];
+        for (let i = 0; i < count; i++) {
+          verts.push({
+            x: Math.random() * 100 + this.offsetX,
+            y: Math.random() * 100 + this.offsetY,
+            targetX: Math.random() * 100 + this.offsetX,
+            targetY: Math.random() * 100 + this.offsetY,
+          });
+        }
+        return verts;
+      }
+      draw() {
+        const gradient = ctx.createLinearGradient(
+          0,
+          0,
+          canvas.width,
+          canvas.height
+        );
+        gradient.addColorStop(0, this.gradient[0]);
+        gradient.addColorStop(1, this.gradient[1]);
+
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.moveTo(this.vertices[0].x, this.vertices[0].y);
+        for (let i = 0; i < this.vertices.length; i++) {
+          const nextVertex = this.vertices[(i + 1) % this.vertices.length];
+          const midX = (this.vertices[i].x + nextVertex.x) / 2;
+          const midY = (this.vertices[i].y + nextVertex.y) / 2;
+          ctx.quadraticCurveTo(
+            this.vertices[i].x,
+            this.vertices[i].y,
+            midX,
+            midY
+          );
+        }
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      updateVertices() {
+        for (let vertex of this.vertices) {
+          if (
+            Math.abs(vertex.x - vertex.targetX) < morphSpeed &&
+            Math.abs(vertex.y - vertex.targetY) < morphSpeed
+          ) {
+            vertex.targetX = Math.random() * 100 + this.offsetX
+            vertex.targetY = Math.random() * 100 + this.offsetY
+          }
+          vertex.x += (vertex.targetX - vertex.x) * morphSpeed * 0.01;
+          vertex.y += (vertex.targetY - vertex.y) * morphSpeed * 0.01;
+        }
+      }
+    }
+
+    class Soul {
+      shapes = [];
+      constructor() {
+        const len = gradients.length;
+        // Generate a random position for the soul
+        const offsetX = Math.random() * (canvas.width - 100);
+        const offsetY = Math.random() * (canvas.height - 100);
+
+        for (let i = 0; i < len; i++) {
+          const gradientIndex = Math.floor(Math.random() * gradients.length);
+          const gradient = gradients[gradientIndex];
+          this.shapes.push(new Shape(gradient, offsetX, offsetY));
+        }
+      }
+
+      updatePosition() {
+        const deltaX = Math.random() - 0.5; // Random movement in X direction
+        const deltaY = Math.random() - 0.5; // Random movement in Y direction
+        for (let shape of this.shapes) {
+          shape.offsetX += deltaX * 10; // Adjust these values for speed and direction
+          shape.offsetY += deltaY * 10;
+        }
+      }
+      checkMouseDistance(mouseX, mouseY) {
+        const soulCenterX = this.shapes[0].offsetX;
+        const soulCenterY = this.shapes[0].offsetY;
+
+        if (distance(mouseX, mouseY, soulCenterX, soulCenterY) < 200) {
+          console.log("run away")
+          this.runAway(mouseX, mouseY);
+        }
+      }
+      runAway(mouseX, mouseY) {
+        const deltaX = this.shapes[0].offsetX - mouseX;
+        const deltaY = this.shapes[0].offsetY - mouseY;
+        const angle = Math.atan2(deltaY, deltaX);
+        const escapeDistance = 200; // Increase this value for a larger escape distance
+
+        // Check if the soul is too close to the mouse
+        if (Math.abs(deltaX) < escapeDistance && Math.abs(deltaY) < escapeDistance) {
+          for (let shape of this.shapes) {
+            // Move the soul away from the mouse more aggressively
+            shape.offsetX += Math.cos(angle) * 100; // Increase the multiplier for faster movement
+            shape.offsetY += Math.sin(angle) * 100;
+          }
+        }
+      }
+      bounceOffEdges() {
+        for (let shape of this.shapes) {
+          // Check for the right and left edges
+          if (shape.offsetX < 0 || shape.offsetX > canvas.width - 100) {
+            shape.offsetX = shape.offsetX < 0 ? 0 : canvas.width - 100;
+            this.reverseDirectionX();
+          }
+
+          // Check for the top and bottom edges
+          if (shape.offsetY < 0 || shape.offsetY > canvas.height - 100) {
+            shape.offsetY = shape.offsetY < 0 ? 0 : canvas.height - 100;
+            this.reverseDirectionY();
+          }
+        }
+      }
+
+      reverseDirectionX() {
+        for (let shape of this.shapes) {
+          shape.offsetX -= Math.random() * 30 - 15; // Reverse the X direction
+        }
+      }
+
+      reverseDirectionY() {
+        for (let shape of this.shapes) {
+          shape.offsetY -= Math.random() * 30 - 15; // Reverse the Y direction
+        }
+      }
+
+
+      animate() {
+        for (let shape of this.shapes) {
+          shape.updateVertices();
+          shape.draw();
+        }
+      }
+    }
+
+    const souls = [];
+    //create 100 souls
+    for (let i = 0; i < 100; i++) {
+      souls.push(new Soul());
+    }
+
+    function animate() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (let soul of souls) {
+        soul.updatePosition();
+        soul.checkMouseDistance(mouseX, mouseY);
+        soul.bounceOffEdges();
+        soul.animate();
+      }
+      requestAnimationFrame(animate);
+    }
+
+    animate();
+
+    function distance(x1, y1, x2, y2) {
+      return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+    }
+
+    document.addEventListener('mousemove', function (event) {
+      const rect = canvas.getBoundingClientRect();
+      mouseX = event.clientX - rect.left;
+      mouseY = event.clientY - rect.top;
+
+      for (let soul of souls) {
+        soul.checkMouseDistance(mouseX, mouseY);
+      }
+    });
+
+
+    const screen = {
+      width: window.innerWidth,
+      height: window.innerHeight,
+    };
+
+    document.documentElement.style.setProperty(
+      "--screen-width",
+      `${screen.width}px`,
+    );
+    document.documentElement.style.setProperty(
+      "--screen-height",
+      `${screen.height}px`,
+    );
+
+    window.addEventListener("resize", () => {
+      screen.width = window.innerWidth;
+      screen.height = window.innerHeight;
+      // Update the CSS variables with units
+
+      canvas.width = screen.width;
+      canvas.height = screen.height;
+      document.documentElement.style.setProperty(
+        "--screen-width",
+        `${screen.width}px`,
+      );
+      document.documentElement.style.setProperty(
+        "--screen-height",
+        `${screen.height}px`,
+      );
+    });
+
+  </script>
+</body>
+
+</html>
